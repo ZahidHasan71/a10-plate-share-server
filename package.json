@@ -16,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/ZahidHasan71/a10-plate-share-server/issues"
   },
-  "homepage": "https://github.com/ZahidHasan71/a10-plate-share-server#readme"
+  "homepage": "https://github.com/ZahidHasan71/a10-plate-share-server#readme",
+  "dependencies": {
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10"
+  }
 }
