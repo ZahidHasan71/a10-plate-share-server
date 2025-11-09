@@ -12,7 +12,7 @@ app.get('/', (req, res) => {
 })
 
 
-const uri = "mongodb+srv://plateShareDB:U9JEDT5aXrk7pkFa@cluster0.8rrwwdz.mongodb.net/?appName=Cluster0";
+const uri = "mongodb+srv://plate-share-db:EciuDIZ7LkYEwHEH@cluster0.8rrwwdz.mongodb.net/?appName=Cluster0";
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -25,8 +25,20 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    
+      await client.connect();
+      
+      const db = client.db('plate-share-db')
+      const foodCollection = db.collection('foods')
+
+      //   ===================food api =================
+      app.get('/foods', async(req, res) => {
+          const result = await foodCollection.find().toArray()
+          res.send(result);
+      })
+
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
