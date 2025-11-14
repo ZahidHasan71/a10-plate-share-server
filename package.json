@@ -18,6 +18,11 @@
   },
   "homepage": "https://github.com/ZahidHasan71/a10-plate-share-server#readme",
   "dependencies": {
-    "express": "^5.1.0"
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "mongodb": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1"
   }
 }
