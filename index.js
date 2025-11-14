@@ -28,7 +28,20 @@ async function run() {
       await client.connect();
       const db = client.db('plate-share-db');
       const foodsCollection = db.collection('foods');
-
+      const usersCollection = db.collection('users');
+    // users apis--------------------------
+    app.post('/users',async (req, res) => {
+        const newUser = req.body;
+        const email = req.body.email;
+        const query = { email: email }
+        const existingUser = await usersCollection.findOne(query);
+        if (existingUser) {
+            return res.send({ message: 'user already exist' })
+        }else{
+            const result = await usersCollection.insertOne(newUser);
+            res.send(result)
+        }
+    })
     //  find use for get all data
     //   findOne use for get single data
       app.get('/foods', async (req, res) => {
