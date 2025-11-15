@@ -29,7 +29,7 @@ async function run() {
       const db = client.db('plate-share-db');
       const foodsCollection = db.collection('foods');
       const usersCollection = db.collection('users');
-    // users apis--------------------------
+    //===================== users apis====================
     app.post('/users',async (req, res) => {
         const newUser = req.body;
         const email = req.body.email;
@@ -42,7 +42,16 @@ async function run() {
             res.send(result)
         }
     })
+    // ==================Featured Foods=================
+    app.get('/featured-foods', async(req, res) => {
+      const cursor = foodsCollection.find({foodStatus: "available"}).sort({quantity: -1}).limit(6);
+      const result = await cursor.toArray();
+      res.send(result);
+    })
+
+
     //  find use for get all data
+    // ======================food apis
     //   findOne use for get single data
       app.get('/foods', async (req, res) => {
           const email = req.query.email;
