@@ -27,7 +27,8 @@ async function run() {
   try {
       await client.connect();
       const db = client.db('plate-share-db');
-      const foodsCollection = db.collection('foods');
+    const foodsCollection = db.collection('foods');
+    const requestsCollection = db.collection('requests');
       const usersCollection = db.collection('users');
     //===================== users apis====================
     app.post('/users',async (req, res) => {
@@ -90,7 +91,43 @@ async function run() {
           const result = foodsCollection.deleteOne(query);
           res.send(result)
       })
+    // =====================request food api=========================
+    app.post('/requests',async (req, res) => {
+        const newRequest = req.body;
+        const result = await requestsCollection.insertOne(newRequest);
+        res.send(result)
+    })
+      app.get('/requests', async (req, res) => {
+        const requesterEmail = req.query.email;
+        const query = {};
 
+        if (requesterEmail) {
+            query.requesterEmail = requesterEmail;
+        }
+
+        const result = await requestsCollection.find(query).toArray();
+        res.send(result);
+    });
+    // ===================request by food api===================
+    app.get('/foods/requests/:foodId', async (req, res) => {
+        const foodId = req.params.foodId;
+
+        const query = { food: foodId };  // FIXED ✔
+
+        const result = await requestsCollection.find(query).toArray();
+        res.send(result);
+    });
+    // **REQUIRED: PATCH API to update request status (Accept/Reject)**
+        app.patch('/requests/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedStatus = req.body; // Expects { status: "accepted" } or { status: "rejected" }
+            const query = { _id: new ObjectId(id) }
+            const update = {
+                $set: updatedStatus 
+            }
+            const result = await requestsCollection.updateOne(query, update);
+            res.send(result)
+        });
 
 
     await client.db("admin").command({ ping: 1 });
