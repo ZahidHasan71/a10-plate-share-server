@@ -1,20 +1,20 @@
-const express = require('express')
-const cors = require('cors')
-const { MongoClient, ServerApiVersion,ObjectId } = require('mongodb');
-const app = express()
-const port = 5000
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const app = express();
+const port = 5000;
 
-app.use(cors())
-app.use(express.json())
+// Middlewares
+app.use(cors());
+app.use(express.json());
 
 app.get('/', (req, res) => {
-  res.send('Server is running!')
-})
+  res.send('Server is running!');
+});
 
-// XfJR8hk1OAzDfxSK
-const uri = "mongodb+srv://plate-share-db:XfJR8hk1OAzDfxSK@cluster0.8rrwwdz.mongodb.net/?appName=Cluster0";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.8rrwwdz.mongodb.net/?appName=Cluster0`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -25,121 +25,147 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-      await client.connect();
-      const db = client.db('plate-share-db');
+    await client.connect();
+
+    const db = client.db('plate-share-db');
     const foodsCollection = db.collection('foods');
     const requestsCollection = db.collection('requests');
-      const usersCollection = db.collection('users');
-    //===================== users apis====================
-    app.post('/users',async (req, res) => {
-        const newUser = req.body;
-        const email = req.body.email;
-        const query = { email: email }
-        const existingUser = await usersCollection.findOne(query);
-        if (existingUser) {
-            return res.send({ message: 'user already exist' })
-        }else{
-            const result = await usersCollection.insertOne(newUser);
-            res.send(result)
-        }
-    })
-    // ==================Featured Foods=================
-    app.get('/featured-foods', async(req, res) => {
-      const cursor = foodsCollection.find({foodStatus: "available"}).sort({quantity: -1}).limit(6);
+    const usersCollection = db.collection('users');
+
+    // ===================== Users API =====================
+    app.post('/users', async (req, res) => {
+      const newUser = req.body;
+      const email = newUser.email;
+      if (!email) return res.status(400).send({ message: 'Email is required' });
+
+      const existingUser = await usersCollection.findOne({ email });
+      if (existingUser) {
+        return res.send({ message: 'user already exist', insertedId: null });
+      } else {
+        const result = await usersCollection.insertOne(newUser);
+        res.send(result);
+      }
+    });
+
+    // ===================== Featured Foods =====================
+    app.get('/featured-foods', async (req, res) => {
+      const cursor = foodsCollection
+        .find({ foodStatus: "available" })
+        .sort({ quantity: -1 })
+        .limit(6);
       const result = await cursor.toArray();
       res.send(result);
-    })
+    });
 
+    // ===================== Foods API =====================
+    app.get('/foods', async (req, res) => {
+      const email = req.query.email;
+      const search = req.query.search;
+      const query = {};
 
-    //  find use for get all data
-    // ======================food apis
-    //   findOne use for get single data
-      app.get('/foods', async (req, res) => {
-          const email = req.query.email;
-          const query = { }
-          if (email) {
-              query.email = email;
-          }
-          const result = await foodsCollection.find(query).toArray();
-          res.send(result)
-      })
-      app.get('/foods/:id',async (req, res) => {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) }
-        const result = await foodsCollection.findOne(query);
-        res.send(result)
-    })
+      if (email) {
+        query.userEmail = email; 
+      }
 
-    app.post('/foods',async (req, res) => {
-        const newFood = req.body;
-        const result = await foodsCollection.insertOne(newFood);
-        res.send(result)
-    })
-      app.patch('/foods/:id', async(req, res) => { 
-          const id = req.params.id;
-          const updatedFood = req.body;
-          const query = { _id: new ObjectId(id) }
-          const update = {
-              $set:  updatedFood   
-          }
-          const result = await foodsCollection.updateOne(query, update);
-          res.send(result)
-      })
-      app.delete('/foods/:id', (req, res) => {
-          const id = req.params.id;
-          const query = { _id: new ObjectId(id) }
-          const result = foodsCollection.deleteOne(query);
-          res.send(result)
-      })
-    // =====================request food api=========================
-    app.post('/requests',async (req, res) => {
-        const newRequest = req.body;
-        const result = await requestsCollection.insertOne(newRequest);
-        res.send(result)
-    })
-      app.get('/requests', async (req, res) => {
-        const requesterEmail = req.query.email;
+      if (search) {
+        query.foodName = { $regex: search, $options: 'i' };
+      }
+
+      const result = await foodsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get('/foods/:id', async (req, res) => {
+      const id = req.params.id;
+      const result = await foodsCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+      
+    app.get('/foods', async (req, res) => {
+        const search = req.query.search;
         const query = {};
-
-        if (requesterEmail) {
-            query.requesterEmail = requesterEmail;
+        if (search) {
+            query.foodName = { $regex: search, $options: 'i' };
         }
-
-        const result = await requestsCollection.find(query).toArray();
+        const result = await foodsCollection.find(query).toArray();
         res.send(result);
     });
-    // ===================request by food api===================
+
+
+    app.post('/foods', async (req, res) => {
+      const newFood = req.body;
+      const result = await foodsCollection.insertOne(newFood);
+      res.send(result);
+    });
+
+    app.patch('/foods/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedFood = req.body;
+      const result = await foodsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedFood }
+      );
+      res.send(result);
+    });
+
+    app.delete('/foods/:id', async (req, res) => {
+      const id = req.params.id;
+      const result = await foodsCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+    // ===================== Requests API =====================
+    app.post('/requests', async (req, res) => {
+      const newRequest = req.body;
+      const result = await requestsCollection.insertOne(newRequest);
+      res.send(result);
+    });
+
+    app.get('/requests', async (req, res) => {
+      const requesterEmail = req.query.email;
+      const donatorEmail = req.query.donatorEmail;
+      const query = {};
+
+      if (requesterEmail) {
+        query.requesterEmail = requesterEmail;
+      } else if (donatorEmail) {
+        query.donatorEmail = donatorEmail;
+      }
+
+      const result = await requestsCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.get('/foods/requests/:foodId', async (req, res) => {
-        const foodId = req.params.foodId;
-
-        const query = { food: foodId };  // FIXED ✔
-
-        const result = await requestsCollection.find(query).toArray();
-        res.send(result);
+      const foodId = req.params.foodId;
+      const result = await requestsCollection.find({ food: foodId }).toArray();
+      res.send(result);
     });
-    // **REQUIRED: PATCH API to update request status (Accept/Reject)**
-        app.patch('/requests/:id', async (req, res) => {
-            const id = req.params.id;
-            const updatedStatus = req.body; // Expects { status: "accepted" } or { status: "rejected" }
-            const query = { _id: new ObjectId(id) }
-            const update = {
-                $set: updatedStatus 
-            }
-            const result = await requestsCollection.updateOne(query, update);
-            res.send(result)
-        });
 
+    app.patch('/requests/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedStatus = req.body;
+      const result = await requestsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedStatus }
+      );
+      res.send(result);
+    });
+
+    app.delete('/requests/:id', async (req, res) => {
+      const id = req.params.id;
+      const result = await requestsCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    console.log("✅ Connected to MongoDB!");
   } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
+    // await client.close(); // Optional for production
   }
 }
 run().catch(console.dir);
 
-
 app.listen(port, () => {
-  console.log(`This app listening on port ${port}`)
-})
+  console.log(`🚀 Server listening on port ${port}`);
+});
